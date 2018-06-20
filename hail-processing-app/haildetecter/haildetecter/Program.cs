@@ -7,14 +7,25 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 
+using System.Net;
+using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json;
+using System.Configuration;
 
 namespace haildetecter
 {
+    // TODO Package Manager:
+    // - Microsoft.Azure.DocumentDB
+    // - Newtonsoft.Json
+
+    // Create CosmosDB Stuff.
+    // https://docs.microsoft.com/en-us/azure/cosmos-db/create-sql-api-dotnet
     class Program
     {
         // Replace<Subscription Key> with your valid subscription key.
-        const string subscriptionKey = "xxx";
-        const string subscriptionKeyText = "yyy";
+        const string subscriptionKey = "zzz";
+        const string subscriptionKeyText = "zzz";
 
         // You must use the same region in your REST call as you used to
         // get your subscription keys. For example, if you got your
@@ -29,16 +40,45 @@ namespace haildetecter
 
         const string uriBaseText = "https://westeurope.api.cognitive.microsoft.com/text/analytics/v2.0";
 
+        private static readonly string DatabaseId = ConfigurationManager.AppSettings["database"];
+        private static readonly string CollectionId = ConfigurationManager.AppSettings["collection"];
+        private static DocumentClient client;
+
+        public Program()
+        {
+            // Initialize DB Repo.
+            DocumentDBRepository<Models.Item>.Initialize();
+
+            // Load all DB entries.
+            IndexAsync();
+        }
+
         static void Main()
         {
-            // Select text or image. 
-            analyseText();
+            Program pr = new Program();
+
+            // Uncomment to use text/image processing modules.
+            // pr.analyseText();
+            // pr.analyseImage();
 
             Console.WriteLine("\nPress Enter to exit...");
             Console.ReadLine();
         }
 
-        static void analyseText() {
+        // Reads all entries from azure cosmos db. 
+        // Sample data/model has been taken form this example:
+        // https://docs.microsoft.com/en-us/azure/cosmos-db/create-sql-api-dotnet
+        public async void IndexAsync()
+        {
+            var items = await DocumentDBRepository<Models.Item>.GetItemsAsync(d => !d.Completed);
+            Console.WriteLine(items);
+            foreach(Models.Item item in items)
+            {
+                Console.WriteLine(item.Description);
+            }
+        }
+
+        protected void analyseText() {
             Console.WriteLine("Analyze text:");
             Console.Write("Enter the text you wish to analyze: ");
             string textToProcess = Console.ReadLine();
@@ -46,7 +86,7 @@ namespace haildetecter
             MakeTextAnalysisRrequest(textToProcess).Wait();
         }
 
-        static void analyseImage() { 
+        protected void analyseImage() { 
 
             // Get the path and filename to process from the user.
             Console.WriteLine("Analyze an image:");
